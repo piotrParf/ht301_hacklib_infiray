@@ -3,7 +3,10 @@ import numpy as np
 import math
 import cv2
 
-debug = 0
+from sys import platform
+
+
+debug = 2
 
 def f32(m3, idx):
     v = m3[idx:idx+4].view(dtype=np.dtype(np.float32))
@@ -46,7 +49,7 @@ def sub_10001180(fpatmp_, coretmp_, cx):
     # K_atm - scaling factor for the atmosphere damping
     # a1,a2 - attenuation for atmosphere without water vapor
     # b1,b2 - attenuation for water vapor
-    
+
     K_atm = 1.9
     a1, a2 = 0.0066, 0.0126
     b1, b2 = -0.0023, -0.0067
@@ -227,12 +230,14 @@ def device_info(meta):
     m3chr = list(meta3.view(dtype=np.dtype(np.uint8)))
     idx = 48
     device_strings = []
+
     for i in range(6):
         idx, s = findString(m3chr, idx)
         device_strings.append(s)
-    if debug > 0: print('device_info:', device_strings)
-    return device_strings
 
+    if debug > 0:
+        print('device_info:', device_strings)
+    return device_strings
 
 
 class HT301:
@@ -245,48 +250,88 @@ class HT301:
             video_dev = self.find_device()
 
         self.cap = cv2.VideoCapture(video_dev)
+
         if not self.isHt301(self.cap):
             Exception('device ' + str(video_dev) + ": HT301 not found!")
 
+        print('set device property CAP_PROP_CONVERT_RGB')
         self.cap.set(cv2.CAP_PROP_CONVERT_RGB, 0)
+
         # Use raw mode
+        print('set device property CAP_PROP_ZOOM to 0x8004')
         self.cap.set(cv2.CAP_PROP_ZOOM, 0x8004)
+
         # Calibrate
         self.calibrate()
+
         #? enable thermal data - not needed
         #self.cap.set(cv2.CAP_PROP_ZOOM, 0x8020)
 
     def isHt301(self, cap):
+
         if not cap.isOpened():
-            if debug > 0: print('open failed!')
+            if debug > 0:
+                print('open failed!')
+            else:
+                print('device found : ')
             return False
+
         w = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
         h = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
-        if debug > 0: print('width:', w, 'height:', h)
-        if w == self.FRAME_WIDTH and h == self.FRAME_HEIGHT: return True
+
+        if debug > 0:
+            print('width:', w, 'height:', h)
+
+        if w == self.FRAME_WIDTH and h == self.FRAME_HEIGHT:
+            return True
         return False
 
     def find_device(self):
-        for i in range(10):
-            if debug > 0: print('testing device nr:',i)
-            cap = cv2.VideoCapture(i)
+
+        for i in range(0,4):
+            if debug > 0:
+                print('testing device nr:',i)
+
+            if platform == "linux" or platform == "linux2":
+                cap = cv2.VideoCapture(i, cv2.CAP_V4L2)
+                # other possibility : CAP_GSTREAMER, but gstreamer 
+                # is broken with OpenCV on Liux
+                # see : https://github.com/opencv/opencv/issues/10324
+            elif platform == "win32":
+                cap = cv2.VideoCapture(i)
+
             ok = self.isHt301(cap)
             cap.release()
-            if ok: return i
+
+            if ok:
+                return i
+
         raise Exception("HT301 device not found!")
 
     def read_(self):
         ret, frame = self.cap.read()
         dt = np.dtype('<u2')
-        frame = frame.view(dtype=dt)
-        frame = frame.reshape(self.FRAME_HEIGHT, self.FRAME_WIDTH)
+
+        if platform == "linux" or platform == "linux2":
+            # Linux
+            frame = frame.view(dtype=dt).reshape((frame.shape[:2]))
+        elif platform == "win32":
+            # Windows
+            frame = frame.view(dtype=dt)
+            frame = frame.reshape(self.FRAME_HEIGHT, self.FRAME_WIDTH)
+        #elif platform = "darwin"
+            # Mac OS
+            # up to you
+
         frame_raw = frame
         f_visible = frame_raw[:frame_raw.shape[0] - 4,...]
         meta      = frame_raw[frame_raw.shape[0] - 4:,...]
+
         return ret, frame_raw, f_visible, meta
 
     def read(self):
         frame_ok = False
+
         while not frame_ok:
             ret, frame_raw, frame, meta = self.read_()
             device_strings = device_info(meta)
@@ -298,10 +343,12 @@ class HT301:
         self.frame = frame
         self.meta  = meta
         self.device_strings  = device_strings
+
         return ret, self.frame
 
     def info(self):
         width, height = self.frame.shape
+
         return info(self.meta, self.device_strings, height, width)
 
     def calibrate(self):
