@@ -13,7 +13,6 @@ cv2.namedWindow("HT301", cv2.WINDOW_NORMAL)
 
 while(True):
     ret, frame = cap.read()
-
     info, lut = cap.info()
     frame = frame.astype(np.float32)
 
