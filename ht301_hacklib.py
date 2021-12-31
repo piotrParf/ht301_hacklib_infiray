@@ -340,8 +340,8 @@ class HT301:
         elif platform == "win32":
             # Windows
             frame = frame.view(dtype=dt)
+            frame = frame.reshape(self.FRAME_HEIGHT, self.FRAME_WIDTH)
 
-        frame = frame.reshape(self.FRAME_HEIGHT, self.FRAME_WIDTH)
         frame_raw = frame
         f_visible = frame_raw[:frame_raw.shape[0] - 4,...]
         meta      = frame_raw[frame_raw.shape[0] - 4:,...]
