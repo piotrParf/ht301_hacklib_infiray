@@ -3,13 +3,9 @@ import numpy as np
 import math
 import cv2
 
-#from pandas.api.types import is_string_dtype
-#from pandas.api.types import is_numeric_dtype
-
 from sys import platform
 
-
-debug = 2
+debug = 0
 
 def f32(m3, idx):
     v = m3[idx:idx+4].view(dtype=np.dtype(np.float32))
