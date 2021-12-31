@@ -3,6 +3,9 @@ import numpy as np
 import math
 import cv2
 
+#from pandas.api.types import is_string_dtype
+#from pandas.api.types import is_numeric_dtype
+
 from sys import platform
 
 
@@ -245,17 +248,25 @@ class HT301:
     FRAME_HEIGHT = 292
 
     def __init__(self, video_dev = None):
-
         if video_dev == None:
             video_dev = self.find_device()
 
-        self.cap = cv2.VideoCapture(video_dev)
+        print()
+        print('Let\'s start ...')
+        self.cap = cv2.VideoCapture(video_dev, cv2.CAP_V4L2)
 
         if not self.isHt301(self.cap):
             Exception('device ' + str(video_dev) + ": HT301 not found!")
+        else:
+            print('isHt301 is True')
 
-        print('set device property CAP_PROP_CONVERT_RGB')
+        self.echo_properties()
+
+        print('initial status of CAP_PROP_CONVERT_RGB = ', self.cap.get(cv2.CAP_PROP_CONVERT_RGB))
+        print('set device property CAP_PROP_CONVERT_RGB ...')
         self.cap.set(cv2.CAP_PROP_CONVERT_RGB, 0)
+
+        print('after the setting of CAP_PROP_CONVERT_RGB we have :  ',self.cap.get(cv2.CAP_PROP_CONVERT_RGB))
 
         # Use raw mode
         print('set device property CAP_PROP_ZOOM to 0x8004')
@@ -268,70 +279,75 @@ class HT301:
         #self.cap.set(cv2.CAP_PROP_ZOOM, 0x8020)
 
     def isHt301(self, cap):
-
         if not cap.isOpened():
             if debug > 0:
                 print('open failed!')
-            else:
-                print('device found : ')
             return False
+        return True
 
-        w = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
-        h = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+    def echo_properties(self):
+        print('device is valid ')
+        print()
+        self.cap.set(cv2.CAP_PROP_FPS, 25)
+        print('FPS = ', self.cap.get(cv2.CAP_PROP_FPS))
+        #cap.set(cv2.CAP_PROP_FOURCC, cv2.CV_FOURCC('M','J','P','G'))
+        print('fourcc = ', int(self.cap.get(cv2.CAP_PROP_FOURCC)))
+        print()
+
+        w = self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+        h = self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
 
         if debug > 0:
-            print('width:', w, 'height:', h)
+            print('width:', int(w), 'height:', int(h))
 
-        if w == self.FRAME_WIDTH and h == self.FRAME_HEIGHT:
-            return True
-        return False
+            if w == self.FRAME_WIDTH and h == self.FRAME_HEIGHT:
+                print('width and height are OK, and w.h = ', int(h)*int(w))
+                print()
+
 
     def find_device(self):
-
         for i in range(0,4):
             if debug > 0:
                 print('testing device nr:',i)
 
             if platform == "linux" or platform == "linux2":
-                cap = cv2.VideoCapture(i, cv2.CAP_V4L2)
-                # other possibility : CAP_GSTREAMER, but gstreamer 
-                # is broken with OpenCV on Liux
+                # other possibility : CAP_GSTREAMER, but gstreamer is broken with OpenCV on Linux
                 # see : https://github.com/opencv/opencv/issues/10324
+                cap = cv2.VideoCapture(i, cv2.CAP_V4L2)
             elif platform == "win32":
                 cap = cv2.VideoCapture(i)
 
             ok = self.isHt301(cap)
             cap.release()
-
             if ok:
                 return i
-
         raise Exception("HT301 device not found!")
 
     def read_(self):
         ret, frame = self.cap.read()
+        print("frame.size = ", frame.size)
         dt = np.dtype('<u2')
+        #dt = np.dtype(np.uint16)
 
         if platform == "linux" or platform == "linux2":
             # Linux
-            frame = frame.view(dtype=dt).reshape((frame.shape[:2]))
+            frame = frame.view(dtype=dt)
+            frame = frame.reshape(self.FRAME_HEIGHT, self.FRAME_WIDTH)
+            print('reshape frame done ...')
+            print()
+            #print('do nothing, testing a line')
         elif platform == "win32":
             # Windows
             frame = frame.view(dtype=dt)
-            frame = frame.reshape(self.FRAME_HEIGHT, self.FRAME_WIDTH)
-        #elif platform = "darwin"
-            # Mac OS
-            # up to you
 
+        frame = frame.reshape(self.FRAME_HEIGHT, self.FRAME_WIDTH)
         frame_raw = frame
         f_visible = frame_raw[:frame_raw.shape[0] - 4,...]
         meta      = frame_raw[frame_raw.shape[0] - 4:,...]
-
         return ret, frame_raw, f_visible, meta
 
     def read(self):
         frame_ok = False
-
         while not frame_ok:
             ret, frame_raw, frame, meta = self.read_()
             device_strings = device_info(meta)
@@ -343,8 +359,7 @@ class HT301:
         self.frame = frame
         self.meta  = meta
         self.device_strings  = device_strings
-
-        return ret, self.frame
+        return ret, frame
 
     def info(self):
         width, height = self.frame.shape
