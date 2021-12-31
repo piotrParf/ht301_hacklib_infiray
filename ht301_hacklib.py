@@ -249,7 +249,11 @@ class HT301:
 
         print()
         print('Let\'s start ...')
-        self.cap = cv2.VideoCapture(video_dev, cv2.CAP_V4L2)
+
+        if platform == "linux" or platform == "linux2":
+            self.cap = cv2.VideoCapture(video_dev, cv2.CAP_V4L2)
+        elif platform == "win32":
+            self.cap = cv2.VideoCapture(video_dev)
 
         if not self.isHt301(self.cap):
             Exception('device ' + str(video_dev) + ": HT301 not found!")
@@ -321,7 +325,8 @@ class HT301:
 
     def read_(self):
         ret, frame = self.cap.read()
-        print("frame.size = ", frame.size)
+        if debug > 0:
+            print("frame.size = ", frame.size)
         dt = np.dtype('<u2')
         #dt = np.dtype(np.uint16)
 
@@ -329,9 +334,10 @@ class HT301:
             # Linux
             frame = frame.view(dtype=dt)
             frame = frame.reshape(self.FRAME_HEIGHT, self.FRAME_WIDTH)
-            print('reshape frame done ...')
-            print()
-            #print('do nothing, testing a line')
+            if debug > 0:
+                print('reshape frame done ...')
+                print()
+                #print('do nothing, testing a line')
         elif platform == "win32":
             # Windows
             frame = frame.view(dtype=dt)
