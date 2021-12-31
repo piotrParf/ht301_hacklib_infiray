@@ -290,7 +290,6 @@ class HT301:
         print()
         self.cap.set(cv2.CAP_PROP_FPS, 25)
         print('FPS = ', self.cap.get(cv2.CAP_PROP_FPS))
-        #cap.set(cv2.CAP_PROP_FOURCC, cv2.CV_FOURCC('M','J','P','G'))
         print('fourcc = ', int(self.cap.get(cv2.CAP_PROP_FOURCC)))
         print()
 
@@ -356,7 +355,6 @@ class HT301:
             if device_strings[3] == 'T3-317-13': frame_ok = True
             else:
                 if debug > 0: print('frame meta no match:', device_strings)
-
         self.frame_raw = frame_raw
         self.frame = frame
         self.meta  = meta
@@ -365,7 +363,6 @@ class HT301:
 
     def info(self):
         width, height = self.frame.shape
-
         return info(self.meta, self.device_strings, height, width)
 
     def calibrate(self):
