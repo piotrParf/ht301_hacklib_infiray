@@ -5,7 +5,7 @@ import cv2
 
 from sys import platform
 
-debug = 0
+debug = 1
 
 def f32(m3, idx):
     v = m3[idx:idx+4].view(dtype=np.dtype(np.float32))
@@ -240,8 +240,8 @@ def device_info(meta):
 
 
 class HT301:
-    FRAME_WIDTH = 384
-    FRAME_HEIGHT = 292
+    FRAME_WIDTH = 256
+    FRAME_HEIGHT = 196
 
     def __init__(self, video_dev = None):
         if video_dev == None:
@@ -352,6 +352,7 @@ class HT301:
         while not frame_ok:
             ret, frame_raw, frame, meta = self.read_()
             device_strings = device_info(meta)
+            frame_ok = True
             if device_strings[3] == 'T3-317-13': frame_ok = True
             else:
                 if debug > 0: print('frame meta no match:', device_strings)

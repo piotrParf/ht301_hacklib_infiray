@@ -29,7 +29,7 @@ ret, frame = cap.read()
 info, lut = cap.info()
 
 fig = plt.figure()
-fig.canvas.set_window_title('HT301')
+fig.canvas.set_window_title('T2L')
 ax = plt.gca()
 im = ax.imshow(lut[frame],cmap=cmaps[cmaps_idx])
 divider = make_axes_locatable(ax)
